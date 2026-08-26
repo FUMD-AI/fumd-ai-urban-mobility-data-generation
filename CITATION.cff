@@ -1,0 +1,63 @@
+cff-version: 1.2.0
+message: "If you use this workflow, its scripts, or the bundled example scenario, please cite it as below."
+title: "Alicante Centro Ciudad SUMO Traffic Scenario Generation and FCD Extraction Workflow"
+type: software
+version: 1.2.0
+date-released: "2026-08-26"
+license:
+  - MIT
+  - CC-BY-4.0
+repository-code: "https://github.com/FUMD-AI/fumd-ai-urban-mobility-data-generation"
+url: "https://github.com/FUMD-AI/fumd-ai-urban-mobility-data-generation"
+abstract: >-
+  A reproducible workflow for generating synthetic urban traffic demand
+  scenarios on an OpenStreetMap-derived SUMO network of central Alicante,
+  Spain, and for extracting Floating Car Data (FCD) - including geographic
+  coordinates and traffic-signal state - from each simulated scenario.
+  Covers the full chain from OpenStreetMap extraction (Overpass API,
+  Geofabrik + osmium, or pyrosm) through netconvert network conversion,
+  randomTrips.py/duarouter-based stochastic trip generation across four
+  vehicle-count densities (900/1000/1200/1400) with three replicates each,
+  and SUMO microsimulation producing per-scenario FCD trajectory files.
+  Output from this workflow is intended as the raw SUMO input to the
+  FUMD-AI preprocessing workflow (fumd-ai-preprocessing-workflow), which
+  turns raw SUMO/OMNeT++ output into AI-ready datasets for cellular
+  handover / migration prediction.
+keywords:
+  - SUMO
+  - traffic simulation
+  - floating car data
+  - FCD
+  - OpenStreetMap
+  - netconvert
+  - randomTrips
+  - reproducibility
+  - FAIR
+  - urban mobility
+authors:
+  - family-names: "Bernad"
+    given-names: "Cristina"
+    affiliation: "Miguel Hernández University"
+    orcid: "https://orcid.org/0000-0001-9537-415X"
+  - family-names: "Filiposka"
+    given-names: "Sonja"
+    affiliation: "Ss. Cyril and Methodius University in Skopje"
+    orcid: "https://orcid.org/0000-0003-0034-2855"
+    email: "sonja.filiposka@finki.ukim.mk"
+  - family-names: "Gilly"
+    given-names: "Katja"
+    affiliation: "Miguel Hernández University"
+    orcid: "https://orcid.org/0000-0002-8985-0639"
+identifiers:
+  - type: url
+    value: "https://github.com/FUMD-AI/fumd-ai-urban-mobility-data-generation"
+    description: "GitHub repository"
+references:
+  - type: software
+    title: "Eclipse SUMO"
+    version: "1.27.1"
+    url: "https://www.eclipse.org/sumo/"
+  - type: software
+    title: "fumd-ai-preprocessing-workflow"
+    url: "https://github.com/FUMD-AI/fumd-ai-preprocessing-workflow"
+    notes: "Downstream workflow that consumes this repository's FCD output as its raw SUMO input."

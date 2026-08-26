@@ -1,0 +1,122 @@
+{
+  "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
+  "@type": "SoftwareSourceCode",
+  "name": "Alicante Centro Ciudad SUMO Traffic Scenario Generation and FCD Extraction Workflow",
+  "description": "A reproducible workflow for generating synthetic urban traffic demand scenarios on an OpenStreetMap-derived SUMO network of central Alicante, Spain, and for extracting Floating Car Data (FCD), including geographic coordinates and traffic-signal state, from each simulated scenario. Covers the full chain from OpenStreetMap extraction (Overpass API, Geofabrik + osmium, or pyrosm) through netconvert network conversion, randomTrips.py/duarouter-based stochastic trip generation across four vehicle-count densities (900/1000/1200/1400) with three replicates each, and SUMO microsimulation producing per-scenario FCD trajectory files. Output from this workflow is intended as the raw SUMO input to the FUMD-AI preprocessing workflow, which turns raw SUMO/OMNeT++ output into AI-ready datasets for cellular handover / migration prediction.",
+  "identifier": "https://github.com/FUMD-AI/fumd-ai-urban-mobility-data-generation",
+  "codeRepository": "https://github.com/FUMD-AI/fumd-ai-urban-mobility-data-generation",
+  "url": "https://github.com/FUMD-AI/fumd-ai-urban-mobility-data-generation",
+  "issueTracker": "https://github.com/FUMD-AI/fumd-ai-urban-mobility-data-generation/issues",
+  "license": [
+    "https://spdx.org/licenses/MIT",
+    "https://spdx.org/licenses/CC-BY-4.0"
+  ],
+  "version": "1.2.0",
+  "dateCreated": "2026-08-26",
+  "datePublished": "2026-08-26",
+  "dateModified": "2026-08-26",
+  "programmingLanguage": [
+    "Bash",
+    "Python"
+  ],
+  "runtimePlatform": "Eclipse SUMO 1.27.1",
+  "operatingSystem": [
+    "Linux",
+    "macOS",
+    "Windows"
+  ],
+  "applicationCategory": "Transportation simulation / Traffic microsimulation",
+  "keywords": [
+    "SUMO",
+    "traffic simulation",
+    "floating car data",
+    "FCD",
+    "OpenStreetMap",
+    "netconvert",
+    "randomTrips",
+    "reproducibility",
+    "FAIR",
+    "urban mobility"
+  ],
+  "softwareRequirements": [
+    {
+      "@type": "SoftwareApplication",
+      "identifier": "eclipse-sumo",
+      "name": "Eclipse SUMO",
+      "version": "1.27.1",
+      "url": "https://www.eclipse.org/sumo/"
+    },
+    {
+      "@type": "SoftwareApplication",
+      "identifier": "python",
+      "name": "Python",
+      "version": ">=3.10",
+      "url": "https://www.python.org/"
+    },
+    {
+      "@type": "SoftwareApplication",
+      "identifier": "pyrosm",
+      "name": "pyrosm",
+      "url": "https://pyrosm.readthedocs.io/"
+    },
+    {
+      "@type": "SoftwareApplication",
+      "identifier": "osmium-tool",
+      "name": "osmium-tool",
+      "url": "https://osmcode.org/osmium-tool/"
+    }
+  ],
+  "relatedLink": [
+    "https://github.com/FUMD-AI/fumd-ai-preprocessing-workflow",
+    "https://www.openstreetmap.org/",
+    "https://download.geofabrik.de/"
+  ],
+  "isPartOf": {
+    "@type": "CreativeWork",
+    "name": "FUMD-AI",
+    "url": "https://eosc.eu/horizon-europe-projects/fumd-ai"
+  },
+  "funder": {
+    "@type": "Organization",
+    "name": "EOSC GRAVITY - Inter Project",
+    "identifier": "25-EOSC-GRV-INTER-013"
+  },
+  "author": [
+    {
+      "@type": "Person",
+      "givenName": "Cristina",
+      "familyName": "Bernad",
+      "affiliation": {
+        "@type": "Organization",
+        "name": "Miguel Hernández University"
+      },
+      "@id": "https://orcid.org/0000-0001-9537-415X"
+    },
+    {
+      "@type": "Person",
+      "givenName": "Sonja",
+      "familyName": "Filiposka",
+      "email": "sonja.filiposka@finki.ukim.mk",
+      "affiliation": {
+        "@type": "Organization",
+        "name": "Ss. Cyril and Methodius University in Skopje"
+      },
+      "@id": "https://orcid.org/0000-0003-0034-2855"
+    },
+    {
+      "@type": "Person",
+      "givenName": "Katja",
+      "familyName": "Gilly",
+      "affiliation": {
+        "@type": "Organization",
+        "name": "Miguel Hernández University"
+      },
+      "@id": "https://orcid.org/0000-0002-8985-0639"
+    }
+  ],
+  "producer": {
+    "@type": "Organization",
+    "name": "FUMD-AI",
+    "url": "https://github.com/FUMD-AI"
+  }
+}
