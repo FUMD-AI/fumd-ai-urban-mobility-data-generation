@@ -31,7 +31,7 @@ related_formats:
   - "SUMO FCD output XML (.xml) — http://sumo.dlr.de/xsd/fcd_file.xsd"
 ---
 
-# Alicante Centro Ciudad SUMO Traffic Scenario Generation and FCD Extraction Workflow
+# Alicante City Centre SUMO Traffic Scenario Generation and FCD Extraction Workflow
 
 ## 1. Overview
 
