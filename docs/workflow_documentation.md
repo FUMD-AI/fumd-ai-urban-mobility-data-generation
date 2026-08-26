@@ -1,5 +1,5 @@
 ---
-title: "Alicante Centro Ciudad SUMO Traffic Scenario Generation and FCD Extraction Workflow"
+title: "Alicante City Centre SUMO Traffic Scenario Generation and FCD Extraction Workflow"
 identifier: "local:alicante-sumo-fcd-workflow:v1.2.0"
 version: "1.2.0"
 date_created: "2026-08-26"
