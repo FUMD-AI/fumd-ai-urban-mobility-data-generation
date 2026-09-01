@@ -1,4 +1,4 @@
-<svg viewBox="0 0 1120 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Pipeline showing OpenStreetMap regional data clipped to an AOI .osm.pbf, converted to .osm XML, then converted by netconvert into a SUMO .net.xml network, with validation checkpoints after clipping and after network conversion.">
+<svg viewBox="0 0 1120 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Pipeline showing OpenStreetMap regional data clipped with osmium extract -s simple into an AOI .osm.pbf, converted to .osm XML, then converted by netconvert into a SUMO .net.xml network, with validation checkpoints after clipping and after network conversion.">
   <title>OSM to SUMO network conversion pipeline</title>
   <rect x="0" y="0" width="1120" height="300" fill="#ffffff"/>
 
@@ -56,13 +56,14 @@
 
   <!-- ===== Arrow 1: extract ===== -->
   <line x1="230" y1="150" x2="304" y2="150" stroke="#1a2433" stroke-width="1.8" marker-end="url(#arrow)"/>
-  <text x="267" y="130" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10.5" fill="#1a2433">osmium extract -b</text>
-  <text x="267" y="143" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9.5" fill="#5b6472">west,south,east,north</text>
+  <text x="267" y="110" text-anchor="middle" font-family="ui-monospace, monospace" font-size="8.5" fill="#1a2433">osmium extract</text>
+  <text x="267" y="121" text-anchor="middle" font-family="ui-monospace, monospace" font-size="8.5" fill="#1a2433">-s simple -b</text>
+  <text x="267" y="140" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10.5" font-weight="700" fill="#b3261e">REQUIRED</text>
 
   <!-- checkpoint under arrow 1 -->
   <line x1="267" y1="150" x2="267" y2="235" stroke="#8a93a1" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#arrowCheck)"/>
   <text x="267" y="252" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10.5" fill="#5b6472">✓ osmium fileinfo -e</text>
-  <text x="267" y="266" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9.5" fill="#8a93a1">bbox &amp; counts look right?</text>
+  <text x="267" y="266" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9.5" fill="#8a93a1">bbox stayed AOI-sized?</text>
 
   <!-- ===== Arrow 2: cat ===== -->
   <line x1="520" y1="150" x2="594" y2="150" stroke="#1a2433" stroke-width="1.8" marker-end="url(#arrow)"/>
