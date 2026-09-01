@@ -1,0 +1,83 @@
+<svg viewBox="0 0 1120 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Pipeline showing OpenStreetMap regional data clipped to an AOI .osm.pbf, converted to .osm XML, then converted by netconvert into a SUMO .net.xml network, with validation checkpoints after clipping and after network conversion.">
+  <title>OSM to SUMO network conversion pipeline</title>
+  <rect x="0" y="0" width="1120" height="300" fill="#ffffff"/>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1a2433"/>
+    </marker>
+    <marker id="arrowCheck" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5b6472"/>
+    </marker>
+  </defs>
+
+  <!-- title -->
+  <text x="560" y="26" text-anchor="middle" font-family="system-ui, sans-serif" font-size="17" font-weight="700" fill="#1a2433">OpenStreetMap → SUMO network conversion pipeline</text>
+  <text x="560" y="45" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" fill="#5b6472">recommended path — workflow_documentation.md §3.2 Option B</text>
+
+  <!-- ===== Box 1: the map / regional extract ===== -->
+  <g>
+    <rect x="20" y="90" width="210" height="120" rx="8" fill="#f4f6f8" stroke="#1a2433" stroke-width="1.5"/>
+    <!-- tiny globe glyph -->
+    <circle cx="60" cy="118" r="14" fill="none" stroke="#1a2433" stroke-width="1.3"/>
+    <ellipse cx="60" cy="118" rx="6" ry="14" fill="none" stroke="#1a2433" stroke-width="1"/>
+    <line x1="46" y1="118" x2="74" y2="118" stroke="#1a2433" stroke-width="1"/>
+    <line x1="49" y1="110" x2="71" y2="110" stroke="#1a2433" stroke-width="0.8"/>
+    <line x1="49" y1="126" x2="71" y2="126" stroke="#1a2433" stroke-width="0.8"/>
+    <text x="88" y="114" font-family="system-ui, sans-serif" font-size="11" font-weight="600" fill="#5b6472">THE MAP</text>
+    <text x="125" y="160" text-anchor="middle" font-family="system-ui, sans-serif" font-size="15" font-weight="700" fill="#1a2433">Regional .osm.pbf</text>
+    <text x="125" y="180" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" fill="#5b6472">Geofabrik extract</text>
+    <text x="125" y="195" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" fill="#5b6472">(e.g. comunidad-valenciana-latest)</text>
+  </g>
+
+  <!-- ===== Box 2: clipped pbf ===== -->
+  <g>
+    <rect x="310" y="90" width="210" height="120" rx="8" fill="#f4f6f8" stroke="#1a2433" stroke-width="1.5"/>
+    <text x="415" y="150" text-anchor="middle" font-family="system-ui, sans-serif" font-size="17" font-weight="700" fill="#1a2433">.osm.pbf</text>
+    <text x="415" y="172" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" fill="#5b6472">AOI-clipped</text>
+    <text x="415" y="188" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" fill="#5b6472">(the "pbf map")</text>
+  </g>
+
+  <!-- ===== Box 3: osm xml ===== -->
+  <g>
+    <rect x="600" y="90" width="210" height="120" rx="8" fill="#f4f6f8" stroke="#1a2433" stroke-width="1.5"/>
+    <text x="705" y="150" text-anchor="middle" font-family="system-ui, sans-serif" font-size="17" font-weight="700" fill="#1a2433">.osm</text>
+    <text x="705" y="172" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" fill="#5b6472">plain XML</text>
+    <text x="705" y="188" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" fill="#5b6472">(the "osm map")</text>
+  </g>
+
+  <!-- ===== Box 4: net.xml (highlighted as the deliverable) ===== -->
+  <g>
+    <rect x="890" y="90" width="210" height="120" rx="8" fill="#eaf1fb" stroke="#2b6cb0" stroke-width="2.5"/>
+    <text x="995" y="150" text-anchor="middle" font-family="system-ui, sans-serif" font-size="17" font-weight="700" fill="#2b6cb0">.net.xml</text>
+    <text x="995" y="172" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" fill="#2b6cb0">SUMO network</text>
+    <text x="995" y="188" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" fill="#2b6cb0">ready for netconvert's callers</text>
+  </g>
+
+  <!-- ===== Arrow 1: extract ===== -->
+  <line x1="230" y1="150" x2="304" y2="150" stroke="#1a2433" stroke-width="1.8" marker-end="url(#arrow)"/>
+  <text x="267" y="130" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10.5" fill="#1a2433">osmium extract -b</text>
+  <text x="267" y="143" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9.5" fill="#5b6472">west,south,east,north</text>
+
+  <!-- checkpoint under arrow 1 -->
+  <line x1="267" y1="150" x2="267" y2="235" stroke="#8a93a1" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#arrowCheck)"/>
+  <text x="267" y="252" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10.5" fill="#5b6472">✓ osmium fileinfo -e</text>
+  <text x="267" y="266" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9.5" fill="#8a93a1">bbox &amp; counts look right?</text>
+
+  <!-- ===== Arrow 2: cat ===== -->
+  <line x1="520" y1="150" x2="594" y2="150" stroke="#1a2433" stroke-width="1.8" marker-end="url(#arrow)"/>
+  <text x="557" y="130" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10.5" fill="#1a2433">osmium cat</text>
+  <text x="557" y="143" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9.5" fill="#5b6472">format only, no re-clip</text>
+
+  <!-- ===== Arrow 3: netconvert ===== -->
+  <line x1="810" y1="150" x2="884" y2="150" stroke="#1a2433" stroke-width="1.8" marker-end="url(#arrow)"/>
+  <text x="847" y="130" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10.5" fill="#1a2433">netconvert</text>
+  <text x="847" y="143" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9.5" fill="#5b6472">--type-files, --proj.utm, ...</text>
+
+  <!-- checkpoint under arrow 3 -->
+  <line x1="847" y1="150" x2="847" y2="235" stroke="#8a93a1" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#arrowCheck)"/>
+  <text x="847" y="252" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10.5" fill="#5b6472">✓ sumo -n --no-step-log</text>
+  <text x="847" y="266" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9.5" fill="#8a93a1">clean exit, edge count sane?</text>
+
+  <text x="560" y="292" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10.5" fill="#8a93a1">full command reference and Options A/C alternatives: docs/workflow_documentation.md §3</text>
+</svg>

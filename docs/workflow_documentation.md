@@ -1,12 +1,20 @@
 ---
 title: "Alicante City Centre SUMO Traffic Scenario Generation and FCD Extraction Workflow"
-identifier: "local:alicante-sumo-fcd-workflow:v1.2.0"
-version: "1.2.0"
+identifier: "local:alicante-sumo-fcd-workflow:v1.3.2"
+version: "1.3.2"
 date_created: "2026-08-26"
+date_updated: "2026-09-01"
 authors:
-  - name: "[Author name]"
-    affiliation: "[Institution]"
-    orcid: "[https://orcid.org/0000-0000-0000-0000]"
+  - name: "Cristina Bernad"
+    affiliation: "Miguel Hernández University"
+    orcid: "https://orcid.org/0000-0001-9537-415X"
+  - name: "Sonja Filiposka"
+    affiliation: "Ss. Cyril and Methodius University in Skopje"
+    orcid: "https://orcid.org/0000-0003-0034-2855"
+    email: "sonja.filiposka@finki.ukim.mk"
+  - name: "Katja Gilly"
+    affiliation: "Miguel Hernández University"
+    orcid: "https://orcid.org/0000-0002-8985-0639"
 keywords:
   - SUMO
   - traffic simulation
@@ -126,6 +134,10 @@ must be reproducible independently of any SUMO scenario-generation step.
 > *identical* network graph — see the limitations note at the end of
 > Section 3.4.
 
+![OpenStreetMap to SUMO network conversion pipeline: a regional .osm.pbf is clipped with osmium extract into an AOI .osm.pbf, converted with osmium cat into a plain .osm XML file, then converted by netconvert into the final .net.xml SUMO network, with validation checkpoints (osmium fileinfo, sumo -n) after clipping and after network conversion.](images/osm_to_sumo_pipeline.svg)
+
+*The recommended path (Option B, below) in one picture: map → `.pbf` → `.osm` → `.net.xml`, with a validation checkpoint after each conversion.*
+
 ### 3.1 Area of interest (AOI)
 
 The network's exact bounding box, as recorded in the file itself, is:
@@ -150,13 +162,66 @@ south = lat₀ − Δlat   north = lat₀ + Δlat
 west  = lon₀ − Δlon   east  = lon₀ + Δlon
 ```
 
+**Coordinate order varies by tool — check this before running anything
+below.** The same four numbers get passed to three different tools in
+three different orders in this section. Getting it wrong doesn't always
+error cleanly: `osmium extract -b` and Overpass QL both fail quietly by
+clipping the wrong area rather than raising an error, so it's worth
+double-checking against this table before a retrieval run rather than
+after:
+
+| Tool | Expected order | This AOI |
+|---|---|---|
+| `osmium extract -b` | `west,south,east,north` | `-0.495075,38.336600,-0.470936,38.353021` |
+| Overpass QL `(...)` bbox filter | `south,west,north,east` | `38.336600,-0.495075,38.353021,-0.470936` |
+| `pyrosm` `bounding_box=[...]` | `[minx,miny,maxx,maxy]` = `[west,south,east,north]` | `[-0.495075, 38.336600, -0.470936, 38.353021]` |
+
+(`pyrosm` raises a clear `minx >= maxx or miny >= maxy` `ValueError` if the
+pair gets swapped — the one tool of the three that fails loudly.)
+
 ### 3.2 Retrieve the OSM extract
 
 Three reproducible retrieval methods are documented below, all using the
-exact bounding box from Section 3.1: `[west, south, east, north] =
-[-0.495075, 38.336600, -0.470936, 38.353021]`.
+exact bounding box from Section 3.1. **Option B is the recommended default**
+— it is the only one of the three that actually produces both artefacts
+this workflow is named for, in order: a pinned, re-fetchable `.osm.pbf`
+first, then the `.osm` XML netconvert consumes, derived from it rather than
+queried separately. Options A and C are documented as alternatives with
+their own tradeoffs, not as equally-weighted choices.
+
+**Option B (recommended) — Regional extract + local clip with `osmium`: pbf, then osm**
+
+```bash
+# 1. Download a regional extract (Comunidad Valenciana) from Geofabrik.
+#    Record the download date — Geofabrik overwrites "-latest" daily, so
+#    the filename alone doesn't pin a snapshot; the date does (Section 3.4).
+wget https://download.geofabrik.de/europe/spain/comunidad-valenciana-latest.osm.pbf
+
+# 2. Clip to the exact bounding box with osmium-tool — this is the pbf-map
+#    deliverable: a small, self-contained, exactly-bounded .osm.pbf.
+osmium extract \
+    -b -0.495075,38.336600,-0.470936,38.353021 \
+    comunidad-valenciana-latest.osm.pbf \
+    -o alicante.osm.pbf
+
+# 2b. Validate before moving on — catches a swapped bbox order or an
+#     accidentally-empty clip immediately, rather than after netconvert
+#     fails downstream.
+osmium fileinfo -e alicante.osm.pbf
+# check: reported bounding box matches Section 3.1, node/way counts are non-zero
+
+# 3. Convert to plain OSM XML — this is the osm-map deliverable that
+#    Section 3.3's netconvert step consumes. Pure format conversion: no
+#    re-clipping happens here, since step 2 already bounded the data.
+osmium cat alicante.osm.pbf -o alicante_centro_2km.osm
+```
 
 **Option A — Overpass API (direct bbox query, no full-planet download):**
+
+Faster for a one-off query, but it queries `.osm` XML directly and never
+produces a `.pbf` at all — skip this option if a pinned, re-fetchable pbf
+artefact matters for your reproducibility record. It's also more prone to
+timing out or being rate-limited than Option B on a dense downtown AOI.
 
 ```bash
 cat > alicante_bbox_query.overpassql <<'EOF'
@@ -171,22 +236,6 @@ EOF
 curl -X POST -d @alicante_bbox_query.overpassql \
     "https://overpass-api.de/api/interpreter" \
     -o alicante_centro_2km.osm
-```
-
-**Option B — Regional extract + local clip with `osmium` (offline/batch reproducibility):**
-
-```bash
-# 1. Download a regional extract (Comunidad Valenciana) from Geofabrik
-wget https://download.geofabrik.de/europe/spain/comunidad-valenciana-latest.osm.pbf
-
-# 2. Clip to the exact bounding box with osmium-tool
-osmium extract \
-    -b -0.495075,38.336600,-0.470936,38.353021 \
-    comunidad-valenciana-latest.osm.pbf \
-    -o alicante.osm.pbf
-
-# 3. (Optional) convert to plain OSM XML — netconvert accepts either .osm or .osm.pbf
-osmium cat alicante.osm.pbf -o alicante_centro_2km.osm
 ```
 
 **Option C — `pyrosm` (Python-based extraction, validation, and network preview):**
@@ -226,11 +275,17 @@ step 2 (or any `.osm.pbf` covering the AOI — `pyrosm` applies the
 `bounding_box` filter internally during parsing, so a full regional
 extract can also be passed directly without pre-clipping).
 
-All three options are equally valid entry points into Section 3.3; choose
-Option A for a lightweight one-off query, Option B for offline/batch
-reproducibility feeding directly into `netconvert`, or Option C when a
-Python-side network preview or GIS export (e.g. to GeoPackage/Shapefile
-via `edges.to_file(...)`) is also wanted alongside the SUMO conversion.
+All three options are valid entry points into Section 3.3, but they are not
+equally weighted: Option B is the default recommendation, since it is the
+only one that leaves a pinned `.osm.pbf` on disk as a reproducibility
+artefact and follows the pbf-then-osm order this section is structured
+around. Reach for Option A only for a disposable, lightweight one-off query
+where retaining a `.pbf` doesn't matter, or Option C when a Python-side
+network preview or GIS export (e.g. to GeoPackage/Shapefile via
+`edges.to_file(...)`) is wanted *alongside* the SUMO conversion — note that
+Option C's `bounding_box` filter works directly against the unclipped
+regional `.pbf` from Option B step 1, so it doesn't require step 2's
+`osmium extract` clip to already exist.
 
 ### 3.3 Convert the OSM extract to a SUMO network with `netconvert`
 
@@ -248,13 +303,18 @@ output file, and UTM auto-projection were specified; all other behaviour
 from netconvert 0.32.0's own defaults.
 
 For a **new** network built with the current toolchain (SUMO 1.27.1), the
-following extended flag set is recommended good practice, and was used
-when this document's example scenarios (Section 6 onward) were generated
-against a network conceptually equivalent to the original:
+following extended flag set is recommended good practice. The
+`--geometry.remove` through `--proj.utm` flags were used when this
+document's example scenarios (Section 6 onward) were generated against a
+network conceptually equivalent to the original; `--type-files` is a v1.3.0
+addition not present in the bundled `Alicante_centro_ciudad.net.xml` and is
+recommended for any future rebuild rather than reported as already applied
+to it:
 
 ```bash
 netconvert \
     --osm-files alicante_centro_2km.osm \
+    --type-files "$SUMO_HOME/data/typemap/osmNetconvert.typ.xml" \
     --output-file Alicante_centro_ciudad.net.xml \
     --geometry.remove \
     --roundabouts.guess \
@@ -269,6 +329,7 @@ netconvert \
 
 | Flag | Purpose |
 |---|---|
+| `--type-files osmNetconvert.typ.xml` | Uses SUMO's own maintained OSM-tag → edge-type mapping (bundled with every SUMO install) instead of netconvert's generic built-in defaults — improves classification of lane counts, speed limits, and road-type-specific rules straight out of OSM tags. Not present in the original 2018 invocation (provenance note above) or in v1.2.0 of this document; recommended for any *new* network build. |
 | `--geometry.remove` | Removes redundant shape-only nodes, simplifying the network graph without changing road geometry. |
 | `--roundabouts.guess` | Infers roundabout structures from OSM way topology. |
 | `--ramps.guess` | Infers highway on-/off-ramps. |
@@ -290,6 +351,8 @@ To keep this stage reproducible, log alongside `Alicante_centro_ciudad.net.xml`:
   on a different date may return a different network.
 - The `netconvert` version and exact flag set used
   (`netconvert --version`).
+- The `osmium-tool` (or `osmconvert`) version used for extraction/clipping
+  (`osmium --version`), if Option B was used.
 - Optionally, the Overpass API changeset ID or the Geofabrik extract's
   publication date, for exact dataset pinning.
 
@@ -317,6 +380,15 @@ sumo -n Alicante_centro_ciudad.net.xml --no-step-log --end 1
 A clean exit (no `Error:` lines) confirms the network is syntactically valid
 and ready to be used as the fixed input `Alicante_centro_ciudad.net.xml`
 referenced throughout the rest of this document (Section 6 onward).
+
+As a quick sanity check on top of the syntactic validation above, confirm
+the edge count looks reasonable for a dense ~2km × 2km city-centre AOI (not
+near-zero, which usually indicates the bbox order was swapped in Section
+3.2):
+
+```bash
+grep -c "<edge " Alicante_centro_ciudad.net.xml
+```
 
 ---
 
@@ -562,17 +634,44 @@ done
 
 ---
 
-## 10. License and Citation
+## 10. License, Citation, and Authorship
 
-- **Workflow scripts**: released under [specify license, e.g. CC-BY-4.0 or MIT].
-- **Network data**: derived from OpenStreetMap contributors, © OpenStreetMap
-  contributors, available under the Open Database License (ODbL).
+- **Workflow scripts** (`scripts/`, this repository's code): MIT License.
+- **Explanatory text** (this document, the root `README.md`): Creative
+  Commons Attribution 4.0 International (CC BY 4.0).
+- **Network data** (`data/`, `examples/*/`): derived from OpenStreetMap
+  contributors, © OpenStreetMap contributors, available under the Open
+  Database License (ODbL).
 - **Simulation software**: Eclipse SUMO, EPL-2.0 / GPL-2.0-or-later.
 
-Suggested citation (update once archived with a DOI):
-> [Author(s)]. (2026). *Alicante Centro Ciudad SUMO Traffic Scenario
-> Generation and FCD Extraction Workflow* (v1.0.0) [Software/Workflow
-> documentation]. [Repository/DOI].
+Full license text: [`LICENSE.txt`](../LICENSE.txt) (MIT) and
+[`LICENSE-CC-BY-4.0.txt`](../LICENSE-CC-BY-4.0.txt) (CC BY 4.0), both at
+the repository root. SPDX-License-Identifier: MIT.
+
+### Authors
+
+- Cristina Bernad, Miguel Hernández University
+  ([ORCID: 0000-0001-9537-415X](https://orcid.org/0000-0001-9537-415X))
+- Sonja Filiposka, Ss. Cyril and Methodius University in Skopje
+  ([ORCID: 0000-0003-0034-2855](https://orcid.org/0000-0003-0034-2855),
+  <sonja.filiposka@finki.ukim.mk>)
+- Katja Gilly, Miguel Hernández University
+  ([ORCID: 0000-0002-8985-0639](https://orcid.org/0000-0002-8985-0639))
+
+### Acknowledgement
+
+This work has been funded by the FUMD-AI project, an EOSC GRAVITY - Inter
+Project with Grant Number 25-EOSC-GRV-INTER-013.
+
+### Suggested citation
+
+(update once archived with a DOI — see `CITATION.cff` / `codemeta.json` at
+the repository root for structured, machine-readable citation metadata)
+
+> Bernad, C., Filiposka, S., & Gilly, K. (2026). *Alicante City Centre SUMO
+> Traffic Scenario Generation and FCD Extraction Workflow* (v1.3.2)
+> [Workflow documentation]. FUMD-AI.
+> https://github.com/FUMD-AI/fumd-ai-urban-mobility-data-generation
 
 ---
 
@@ -583,3 +682,6 @@ Suggested citation (update once archived with a DOI):
 | 1.0.0 | 2026-08-26 | Initial documented release: 4 densities × 3 replicates, 500 m minimum trip distance, FCD extraction with geo + signal state. |
 | 1.1.0 | 2026-08-26 | Added Section 3, documenting upstream OSM extraction (Overpass API / Geofabrik + osmium) and `netconvert` conversion for the ≈2 km × 2 km Alicante network, to make the full pipeline reproducible from raw OSM data through to FCD output. |
 | 1.2.0 | 2026-08-26 | Corrected Section 3 to use the exact bounding box embedded in `Alicante_centro_ciudad.net.xml`'s own `<location origBoundary=...>` metadata (`-0.495075,38.336600,-0.470936,38.353021`), replacing an earlier illustrative estimate. Documented the file's true provenance (netconvert 0.32.0, 2018-05-07, `--proj.utm` only) and added an explicit reproducibility-limitations note. Added `pyrosm`-based extraction (Option C) as a Python alternative for network retrieval, validation, and preview. |
+| 1.3.0 | 2026-09-01 | Restructured Section 3.2 so Option B (Geofabrik + `osmium`) is the recommended default, since it's the only path that produces a pinned `.osm.pbf` before deriving the `.osm` XML, matching the section's pbf-then-osm ordering; Options A and C are now documented explicitly as alternatives rather than equally-weighted choices. Added a coordinate-order table (3.1) covering the three different argument orders `osmium extract -b`, Overpass QL, and `pyrosm` each expect for the same bbox. Added an `osmium fileinfo` validation checkpoint immediately after clipping (3.2) and an edge-count sanity check after network validation (3.5). Added `--type-files "$SUMO_HOME/data/typemap/osmNetconvert.typ.xml"` to the recommended netconvert flag set (3.3) — SUMO's maintained OSM tag-to-edge-type mapping, absent from both the original 2018 build and v1.2.0's recommended flags. Added `osmium-tool`/`osmconvert` version to the provenance checklist (3.4). Added `docs/`, `data/`, `scripts/`, and top-level `examples/` `README.md` files (the only repository directories previously without one). |
+| 1.3.1 | 2026-09-01 | Added `docs/images/osm_to_sumo_pipeline.svg`, a diagram of the Section 3.2 Option B pipeline (map → `.pbf` → `.osm` → `.net.xml`, with both validation checkpoints), referenced at the top of Section 3. Added the previously-missing root-level `LICENSE.txt` (MIT) and `LICENSE-CC-BY-4.0.txt` files, sourced from the sibling [`fumd-ai-preprocessing-workflow`](https://github.com/FUMD-AI/fumd-ai-preprocessing-workflow) repository — same authorship (Bernad, Filiposka, Gilly) and license choice (MIT + CC-BY-4.0) already recorded in this repository's `CITATION.cff`/`codemeta.json`, so no authorship change, just the missing files the root `README.md` already referenced. |
+| 1.3.2 | 2026-09-01 | Replaced the placeholder `[Author name]`/`[Institution]` in the YAML front matter and the placeholder `[Author(s)]`/`[specify license]` text in Section 10 with the repository's actual authors, affiliations, and ORCIDs (matching `CITATION.cff`), the actual dual license (MIT / CC-BY-4.0, now that both `LICENSE*` files exist per v1.3.1), the FUMD-AI funding acknowledgement from the root `README.md`, and a filled-in suggested citation. Renamed Section 10 from "License and Citation" to "License, Citation, and Authorship" to reflect its expanded scope. Bumped `CITATION.cff`/`codemeta.json` version and date to match, since they'd drifted from this document's version since v1.3.0. |
