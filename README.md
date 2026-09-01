@@ -31,6 +31,14 @@ Out of the box, `examples/900_1/` bundles one complete, already-generated
 scenario (config, trips, routes, and its FCD output) so the pipeline's
 output format can be inspected without running SUMO at all.
 
+To regenerate the full 12-scenario matrix in one command instead of calling
+`generate_scenario.sh` in a loop yourself, use `scripts/generate_matrix.sh`:
+
+```bash
+./generate_matrix.sh ../data/Alicante_centro_ciudad.net.xml Alicante
+./generate_fcd_outputs.sh 1800
+```
+
 ## Repository layout
 
 ```
@@ -46,6 +54,7 @@ output format can be inspected without running SUMO at all.
 ├── scripts/
 │   ├── README.md
 │   ├── generate_scenario.sh        trip/route/config generation for one scenario
+│   ├── generate_matrix.sh          drives generate_scenario.sh across the full 4x3 matrix
 │   └── generate_fcd_outputs.sh     batch SUMO run + FCD extraction
 ├── data/
 │   ├── README.md
@@ -76,7 +85,7 @@ Reusable) methodology document for this repository. It covers:
 4. Provenance/validation notes (e.g. minor vehicle-insertion shortfalls at
    high density due to end-of-horizon congestion — a real traffic effect,
    not a generation error).
-5. The two automation scripts and how to re-run the full matrix.
+5. The three automation scripts and how to re-run the full matrix.
 
 ## Scenario matrix
 

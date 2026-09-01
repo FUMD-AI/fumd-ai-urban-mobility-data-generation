@@ -1,7 +1,7 @@
 ---
 title: "Alicante City Centre SUMO Traffic Scenario Generation and FCD Extraction Workflow"
-identifier: "local:alicante-sumo-fcd-workflow:v1.3.5"
-version: "1.3.5"
+identifier: "local:alicante-sumo-fcd-workflow:v1.3.6"
+version: "1.3.6"
 date_created: "2026-08-26"
 date_updated: "2026-09-01"
 authors:
@@ -738,9 +738,11 @@ re-running the simulation.
 | Script | Purpose | Signature |
 |---|---|---|
 | `generate_scenario.sh` | Generates one scenario's trips, routes, and config | `./generate_scenario.sh <net_file> <num_cars> <sim_end_seconds> <seed> <out_prefix> [min_distance]` |
+| `generate_matrix.sh` | Drives `generate_scenario.sh` across the full 4×3 (12-scenario) matrix in one command | `./generate_matrix.sh <net_file> <city_prefix> [out_dir] [generate_scenario_script]` |
 | `generate_fcd_outputs.sh` | Batch-runs SUMO on all `Alicante_*_*.sumo.cfg` files, producing FCD outputs | `./generate_fcd_outputs.sh [end_time]` |
 
-Example — regenerating the full 4×3 matrix from scratch:
+Example — regenerating the full 4×3 matrix from scratch, written out as an
+explicit loop (this is what `generate_matrix.sh` does internally):
 ```bash
 SEED=3001
 for density in 900 1000 1200 1400; do
@@ -752,6 +754,15 @@ for density in 900 1000 1200 1400; do
 done
 ./generate_fcd_outputs.sh 1800
 ```
+
+Equivalently, as a single command via `generate_matrix.sh`:
+```bash
+./generate_matrix.sh Alicante_centro_ciudad.net.xml Alicante
+./generate_fcd_outputs.sh 1800
+```
+This writes into `Alicante_scenarios/` by default and prints each
+scenario's actual vehicle count as it runs — see Section 8 for how to
+interpret a shortfall against the target.
 
 ---
 
@@ -790,7 +801,7 @@ Project with Grant Number 25-EOSC-GRV-INTER-013.
 the repository root for structured, machine-readable citation metadata)
 
 > Bernad, C., Filiposka, S., & Gilly, K. (2026). *Alicante City Centre SUMO
-> Traffic Scenario Generation and FCD Extraction Workflow* (v1.3.5)
+> Traffic Scenario Generation and FCD Extraction Workflow* (v1.3.6)
 > [Workflow documentation]. FUMD-AI.
 > https://github.com/FUMD-AI/fumd-ai-urban-mobility-data-generation
 
@@ -809,3 +820,4 @@ the repository root for structured, machine-readable citation metadata)
 | 1.3.3 | 2026-09-01 | Added `-s simple` to the `osmium extract` command in Section 3.2 and a new "Extract strategy" note explaining why: `osmium extract`'s default `complete_ways` strategy pulls in an entire way — including every other node on it, arbitrarily far away — if even one of its nodes falls inside the bbox, which silently produces an extract many times larger than the intended AOI and no longer actually bounded to it. Confirmed with a synthetic reproduction (a way with nodes both inside and ~15-20km outside a test bbox) and observed once in practice, where it turned a 2km × 2km target into a ~19km × 7.5km extract. Updated Section 3.2's `osmium fileinfo` validation-checkpoint comment to check for this specifically. Updated `docs/images/osm_to_sumo_pipeline.svg` to show `-s simple` on the extract step. |
 | 1.3.4 | 2026-09-01 | Added Section 3.3.1, a troubleshooting entry for `netconvert` aborting on an internal C++ assertion (`Assertion ... failed. Aborted (core dumped)`, e.g. in `NBAlgorithms.h`'s junction-angle computation) rather than reporting a normal recoverable error. Diagnosed as a build-configuration difference, not a data or SUMO-version problem: the officially pip-distributed `eclipse-sumo` package builds are compiled `Release` (assertions compiled out entirely — confirmed by the assertion's string constant being absent from the binary), while a locally-compiled `netconvert` without an explicit Release configuration keeps assertions live and can abort on a floating-point edge case in angle computation that Release builds silently tolerate without incident. The same OSM extract and netconvert command that aborted on a local build ran cleanly to a valid, `sumo -n`-validated `.net.xml` against the pip-distributed package. |
 | 1.3.5 | 2026-09-01 | Added Section 3.6, an optional `polyconvert` step run after netconvert (3.3) and network validation (3.5) — converts the same `.osm`/`.net.xml` pair into a `.poly.xml` polygon file (buildings, land use, water) for visual context in `sumo-gui`/`netedit`, using SUMO's bundled `osmPolyconvert.typ.xml` type mapping. Explicitly scoped as a visualization aid only: it feeds nothing into Sections 6–9's trip/route/simulation pipeline and isn't part of Section 3.4's reproducibility record. |
+| 1.3.6 | 2026-09-01 | Added `scripts/generate_matrix.sh` to Section 9's automation-scripts table — a driver script that runs `generate_scenario.sh` across the full 4×3 (12-scenario) matrix in one command, replacing the need to hand-write the shell loop each time. Updated Section 9, `scripts/README.md`, and the root `README.md` (Quick Start and repository layout) accordingly. Purely additive: the explicit-loop form of the matrix generation example is unchanged and still documented alongside it. |
