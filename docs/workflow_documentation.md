@@ -1,7 +1,7 @@
 ---
 title: "Alicante City Centre SUMO Traffic Scenario Generation and FCD Extraction Workflow"
-identifier: "local:alicante-sumo-fcd-workflow:v1.3.2"
-version: "1.3.2"
+identifier: "local:alicante-sumo-fcd-workflow:v1.3.5"
+version: "1.3.5"
 date_created: "2026-08-26"
 date_updated: "2026-09-01"
 authors:
@@ -199,17 +199,41 @@ wget https://download.geofabrik.de/europe/spain/comunidad-valenciana-latest.osm.
 
 # 2. Clip to the exact bounding box with osmium-tool — this is the pbf-map
 #    deliverable: a small, self-contained, exactly-bounded .osm.pbf.
+#    -s simple is required — see the strategy note immediately below.
 osmium extract \
+    -s simple \
     -b -0.495075,38.336600,-0.470936,38.353021 \
     comunidad-valenciana-latest.osm.pbf \
     -o alicante.osm.pbf
 
-# 2b. Validate before moving on — catches a swapped bbox order or an
-#     accidentally-empty clip immediately, rather than after netconvert
-#     fails downstream.
+# 2b. Validate before moving on — catches a swapped bbox order, a wrong
+#     extract strategy, or an accidentally-empty clip immediately, rather
+#     than after netconvert fails downstream.
 osmium fileinfo -e alicante.osm.pbf
-# check: reported bounding box matches Section 3.1, node/way counts are non-zero
+# check: reported bounding box is close to Section 3.1's AOI (not
+# dramatically larger — see the strategy note below for what "dramatically
+# larger" looks like), node/way counts are non-zero and are in the
+# low-to-mid thousands for a ~4 km² dense downtown, not tens of thousands
+```
 
+**Extract strategy — don't skip `-s simple`.** `osmium extract`'s default
+strategy is `complete_ways` — earlier versions of this section omitted
+`-s simple` and didn't warn about this. Under `complete_ways`, if a way has
+*even one* node inside the bbox, the entire way gets pulled in, including
+every other node, no matter how far away. A regional extract almost always has a few ways like this crossing
+the AOI's edge — a through-highway, an administrative boundary, a long rail
+or river way — and `complete_ways` silently drags all of that in, producing
+an `.osm.pbf` many times larger than the AOI and no longer actually bounded
+to it (in one real case, a 2km × 2km target extract came out spanning
+~19km × 7.5km — 36× the intended area — from a single long way clipping the
+box's edge). `-s simple` cuts ways cleanly at the bbox boundary instead:
+any way crossing the edge just ends there, with a dangling node at the
+boundary. That's the correct and expected shape for a bounded extract — it
+matches how Overpass API bbox queries behave (Option A, below) and how a
+SUMO network's fringe edges are supposed to look, since vehicles need to
+enter/exit the simulated area at those cut points anyway.
+
+```bash
 # 3. Convert to plain OSM XML — this is the osm-map deliverable that
 #    Section 3.3's netconvert step consumes. Pure format conversion: no
 #    re-clipping happens here, since step 2 already bounded the data.
@@ -340,6 +364,62 @@ netconvert \
 | `--output.street-names` | Preserves OSM street names in the network for traceability back to the source data. |
 | `--proj.utm` | Automatically selects the correct UTM zone for the AOI, ensuring accurate metre-based internal coordinates and correct back-projection to WGS84 for `--fcd-output.geo` (Section 7). |
 
+#### 3.3.1 Troubleshooting: netconvert aborts with a C++ assertion
+
+**Symptom:** `netconvert` crashes partway through with something like
+
+```
+netconvert: ./src/netbuild/NBAlgorithms.h:193: double NBNodesEdgesSorter::edge_by_junction_angle_sorter::getConvAngle(NBEdge*) const: Assertion `angle >= 0 && angle < (double)360' failed.
+Aborted (core dumped)
+```
+
+rather than a normal `Error:` message. This is a C++ `assert()` inside
+netconvert's own internals firing, not a warning about a specific tag or
+geometry problem in your OSM data — the process aborts outright rather
+than reporting a recoverable issue and continuing.
+
+**Cause: this is a build-configuration difference, not (necessarily) a data
+error or a SUMO version issue.** Whether C's `assert()` macro does anything
+at all depends on whether the binary was compiled with `NDEBUG` defined
+(a "Release" build strips every `assert()` in the codebase to a no-op) or
+without it (assertions stay live and abort on violation). In one diagnosed
+case, the exact same OSM extract and the exact same `netconvert` command
+ran to a clean, valid `.net.xml` — no crash — against **every** version of
+the officially pip-distributed `eclipse-sumo` package tried, all of which
+report `Release` in their `--version` build-features line and don't even
+contain the assertion's string constant in the binary (confirmed with
+`strings $(which netconvert) | grep "angle >= 0 && angle"` — zero matches).
+The failing build in that case was a locally-compiled `netconvert`, built
+without an explicit Release configuration, so its assertions were live and
+caught a floating-point edge case (a computed angle landing on something
+like `-1e-15` or `360.0000000001` from rounding) that the Release builds
+silently tolerate at that one junction without it affecting the rest of
+the network.
+
+**Fix, in order of effort:**
+
+1. Try the pip-distributed `eclipse-sumo` package instead of (or alongside)
+   whatever `netconvert` is currently first on `PATH`:
+   ```bash
+   pip install eclipse-sumo --break-system-packages
+   export SUMO_HOME=$(python3 -c "import sumo, os; print(os.path.dirname(sumo.__file__))")
+   export PATH="$SUMO_HOME/bin:$PATH"
+   export PROJ_LIB="$SUMO_HOME/data/proj"
+   ```
+   then re-run the exact same `netconvert` command. Check `netconvert
+   --version`'s build-features line for `Release` to confirm which build is
+   actually on `PATH` before and after.
+2. If a locally-compiled `netconvert` is required for another reason
+   (custom build options, a feature not in the packaged release, etc.),
+   rebuild it with `-DCMAKE_BUILD_TYPE=Release` in the `cmake` invocation —
+   this defines `NDEBUG` and matches the packaged builds' behaviour.
+3. Report the specific assertion upstream to the SUMO project if it
+   recurs on a genuinely different dataset — an assertion violated by
+   ordinary OSM data (rather than obviously malformed input) generally
+   indicates the check itself is stricter than the real invariant, which
+   is worth the maintainers knowing about even though the practical
+   workaround above is normally sufficient.
+
 ### 3.4 Record data provenance and reproducibility limitations
 
 To keep this stage reproducible, log alongside `Alicante_centro_ciudad.net.xml`:
@@ -389,6 +469,47 @@ near-zero, which usually indicates the bbox order was swapped in Section
 ```bash
 grep -c "<edge " Alicante_centro_ciudad.net.xml
 ```
+
+### 3.6 (Optional) Extract polygons for visualization with `polyconvert`
+
+`Alicante_centro_ciudad.net.xml` alone contains only the road network —
+edges, junctions, and traffic-light logic. It does **not** carry building
+footprints, land use, water, or other non-road OSM geometry, since none of
+that is needed by `netconvert`, `randomTrips.py`, `duarouter`, or `sumo`
+(Sections 6–9) to generate trips, routes, or FCD output. `polyconvert`
+converts that OSM geometry into a separate SUMO polygon file, purely for
+visual context in `sumo-gui` or `netedit` — buildings and landmarks
+rendered under the network, not anything the simulation itself consumes.
+
+```bash
+polyconvert \
+    --net-file Alicante_centro_ciudad.net.xml \
+    --osm-files alicante_centro_2km.osm \
+    --type-file "$SUMO_HOME/data/typemap/osmPolyconvert.typ.xml" \
+    -o Alicante_centro_ciudad.poly.xml
+```
+
+`--net-file` and `--osm-files` must be the exact `.net.xml`/`.osm` pair from
+this same run of Sections 3.2–3.3 — `polyconvert` maps OSM geometry onto the
+network's own internal coordinate system, so a mismatched pair (e.g. a
+`.osm` from a different AOI or a since-regenerated `.net.xml`) produces
+polygons that don't align with the network. `--type-file
+osmPolyconvert.typ.xml` is SUMO's own maintained OSM-tag → polygon-type
+mapping (bundled with every SUMO install, alongside `osmNetconvert.typ.xml`
+used in Section 3.3), giving buildings, water, and green space sensible
+default fill colours and layering out of the box.
+
+**Usage** — reference the resulting file as an `<additional-files>` entry
+when launching `sumo-gui`, or open it directly in `netedit`:
+
+```bash
+sumo-gui -n Alicante_centro_ciudad.net.xml -a Alicante_centro_ciudad.poly.xml
+```
+
+This step is independent of, and does not feed into, Section 3.4's
+provenance record or Section 3.5's validation — `Alicante_centro_ciudad.poly.xml`
+is a visualization aid, not part of the reproducible `.net.xml` artefact
+that Sections 6–9 build on.
 
 ---
 
@@ -669,7 +790,7 @@ Project with Grant Number 25-EOSC-GRV-INTER-013.
 the repository root for structured, machine-readable citation metadata)
 
 > Bernad, C., Filiposka, S., & Gilly, K. (2026). *Alicante City Centre SUMO
-> Traffic Scenario Generation and FCD Extraction Workflow* (v1.3.2)
+> Traffic Scenario Generation and FCD Extraction Workflow* (v1.3.5)
 > [Workflow documentation]. FUMD-AI.
 > https://github.com/FUMD-AI/fumd-ai-urban-mobility-data-generation
 
@@ -685,3 +806,6 @@ the repository root for structured, machine-readable citation metadata)
 | 1.3.0 | 2026-09-01 | Restructured Section 3.2 so Option B (Geofabrik + `osmium`) is the recommended default, since it's the only path that produces a pinned `.osm.pbf` before deriving the `.osm` XML, matching the section's pbf-then-osm ordering; Options A and C are now documented explicitly as alternatives rather than equally-weighted choices. Added a coordinate-order table (3.1) covering the three different argument orders `osmium extract -b`, Overpass QL, and `pyrosm` each expect for the same bbox. Added an `osmium fileinfo` validation checkpoint immediately after clipping (3.2) and an edge-count sanity check after network validation (3.5). Added `--type-files "$SUMO_HOME/data/typemap/osmNetconvert.typ.xml"` to the recommended netconvert flag set (3.3) — SUMO's maintained OSM tag-to-edge-type mapping, absent from both the original 2018 build and v1.2.0's recommended flags. Added `osmium-tool`/`osmconvert` version to the provenance checklist (3.4). Added `docs/`, `data/`, `scripts/`, and top-level `examples/` `README.md` files (the only repository directories previously without one). |
 | 1.3.1 | 2026-09-01 | Added `docs/images/osm_to_sumo_pipeline.svg`, a diagram of the Section 3.2 Option B pipeline (map → `.pbf` → `.osm` → `.net.xml`, with both validation checkpoints), referenced at the top of Section 3. Added the previously-missing root-level `LICENSE.txt` (MIT) and `LICENSE-CC-BY-4.0.txt` files, sourced from the sibling [`fumd-ai-preprocessing-workflow`](https://github.com/FUMD-AI/fumd-ai-preprocessing-workflow) repository — same authorship (Bernad, Filiposka, Gilly) and license choice (MIT + CC-BY-4.0) already recorded in this repository's `CITATION.cff`/`codemeta.json`, so no authorship change, just the missing files the root `README.md` already referenced. |
 | 1.3.2 | 2026-09-01 | Replaced the placeholder `[Author name]`/`[Institution]` in the YAML front matter and the placeholder `[Author(s)]`/`[specify license]` text in Section 10 with the repository's actual authors, affiliations, and ORCIDs (matching `CITATION.cff`), the actual dual license (MIT / CC-BY-4.0, now that both `LICENSE*` files exist per v1.3.1), the FUMD-AI funding acknowledgement from the root `README.md`, and a filled-in suggested citation. Renamed Section 10 from "License and Citation" to "License, Citation, and Authorship" to reflect its expanded scope. Bumped `CITATION.cff`/`codemeta.json` version and date to match, since they'd drifted from this document's version since v1.3.0. |
+| 1.3.3 | 2026-09-01 | Added `-s simple` to the `osmium extract` command in Section 3.2 and a new "Extract strategy" note explaining why: `osmium extract`'s default `complete_ways` strategy pulls in an entire way — including every other node on it, arbitrarily far away — if even one of its nodes falls inside the bbox, which silently produces an extract many times larger than the intended AOI and no longer actually bounded to it. Confirmed with a synthetic reproduction (a way with nodes both inside and ~15-20km outside a test bbox) and observed once in practice, where it turned a 2km × 2km target into a ~19km × 7.5km extract. Updated Section 3.2's `osmium fileinfo` validation-checkpoint comment to check for this specifically. Updated `docs/images/osm_to_sumo_pipeline.svg` to show `-s simple` on the extract step. |
+| 1.3.4 | 2026-09-01 | Added Section 3.3.1, a troubleshooting entry for `netconvert` aborting on an internal C++ assertion (`Assertion ... failed. Aborted (core dumped)`, e.g. in `NBAlgorithms.h`'s junction-angle computation) rather than reporting a normal recoverable error. Diagnosed as a build-configuration difference, not a data or SUMO-version problem: the officially pip-distributed `eclipse-sumo` package builds are compiled `Release` (assertions compiled out entirely — confirmed by the assertion's string constant being absent from the binary), while a locally-compiled `netconvert` without an explicit Release configuration keeps assertions live and can abort on a floating-point edge case in angle computation that Release builds silently tolerate without incident. The same OSM extract and netconvert command that aborted on a local build ran cleanly to a valid, `sumo -n`-validated `.net.xml` against the pip-distributed package. |
+| 1.3.5 | 2026-09-01 | Added Section 3.6, an optional `polyconvert` step run after netconvert (3.3) and network validation (3.5) — converts the same `.osm`/`.net.xml` pair into a `.poly.xml` polygon file (buildings, land use, water) for visual context in `sumo-gui`/`netedit`, using SUMO's bundled `osmPolyconvert.typ.xml` type mapping. Explicitly scoped as a visualization aid only: it feeds nothing into Sections 6–9's trip/route/simulation pipeline and isn't part of Section 3.4's reproducibility record. |
