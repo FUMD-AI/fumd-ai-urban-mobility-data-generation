@@ -41,13 +41,17 @@ output format can be inspected without running SUMO at all.
 ├── LICENSE.txt                MIT (source code)
 ├── LICENSE-CC-BY-4.0.txt      CC BY 4.0 (explanatory text/figures)
 ├── docs/
+│   ├── README.md
 │   └── workflow_documentation.md   full FAIR-structured methodology (see below)
 ├── scripts/
+│   ├── README.md
 │   ├── generate_scenario.sh        trip/route/config generation for one scenario
 │   └── generate_fcd_outputs.sh     batch SUMO run + FCD extraction
 ├── data/
+│   ├── README.md
 │   └── Alicante_centro_ciudad.net.xml   shared SUMO network (~2.1 x 1.8 km, Alicante centre)
 └── examples/
+    ├── README.md
     └── 900_1/                 one complete, runnable example scenario
         ├── README.md
         ├── Alicante_900_1.trips.xml
